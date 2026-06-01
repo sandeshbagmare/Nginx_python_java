@@ -25,7 +25,7 @@ import java.util.concurrent.Executors;
  */
 public class HttpServerProxy {
     static final String UP_HOST = "127.0.0.1";
-    static final int    UP_PORT = 8000;
+    static final int    UP_PORT = 4000;
 
     static final Set<String> HOP_BY_HOP = new HashSet<>(Arrays.asList(
         "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
@@ -34,7 +34,7 @@ public class HttpServerProxy {
     static boolean FIXED;
 
     public static void main(String[] args) throws Exception {
-        int port = Integer.parseInt(env("PROXY_PORT", "8080"));
+        int port = Integer.parseInt(env("PROXY_PORT", "4003"));
         FIXED = "fixed".equalsIgnoreCase(env("MODE", "naive"));
         HttpServer s = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
         s.createContext("/", HttpServerProxy::handle);

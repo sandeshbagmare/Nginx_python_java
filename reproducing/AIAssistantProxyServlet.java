@@ -42,7 +42,7 @@ public class AIAssistantProxyServlet extends HttpServlet {
     // ---- stubs for ThingWorx internals (kept so the proxy logic reads like production) ----
     private static final SimpleLog _logger = new SimpleLog();
     private static final long REQUEST_TIMEOUT_MS = 30_000;                 // subsystem.getRequestTimeoutInMS()
-    private static final String ASSISTANT_BASE = "http://127.0.0.1:8000";  // assistantURL (the Python app)
+    private static final String ASSISTANT_BASE = "http://127.0.0.1:4000";  // assistantURL (the Python app)
     private static final boolean STRIP_HOP_BY_HOP = Boolean.getBoolean("stripHopByHop");
 
     private final HttpClient httpClient =

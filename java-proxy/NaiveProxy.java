@@ -6,7 +6,7 @@ import java.util.*;
 /**
  * ============================ FAULTY PROXY (the bug) ============================
  *
- * Topology:  client -> [this proxy : 8080] -> Uvicorn/FastAPI : 8000
+ * Topology:  client -> [this proxy : 4001] -> Uvicorn/FastAPI : 4000
  *
  * This models a Java proxy running on a NON-deduplicating HTTP server
  * (Tomcat / Jetty / Netty -- i.e. Spring MVC, Zuul, Spring Cloud Gateway, or a
@@ -32,8 +32,8 @@ import java.util.*;
  */
 public class NaiveProxy {
     static final String UP_HOST = "127.0.0.1";
-    static final int    UP_PORT = 8000;
-    static final int    LISTEN  = 8080;
+    static final int    UP_PORT = 4000;
+    static final int    LISTEN  = 4001;
 
     public static void main(String[] a) throws Exception {
         ServerSocket ss = new ServerSocket();

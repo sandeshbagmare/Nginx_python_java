@@ -11,7 +11,7 @@ import org.apache.catalina.startup.Tomcat;
  */
 public class EmbeddedProxy {
     public static void main(String[] args) throws Exception {
-        int port = Integer.parseInt(System.getProperty("port", "8080"));
+        int port = Integer.parseInt(System.getProperty("port", "4003"));
         Tomcat tomcat = new Tomcat();
         tomcat.setBaseDir(System.getProperty("java.io.tmpdir") + "/embedtc-" + port);
         tomcat.setPort(port);
@@ -22,7 +22,7 @@ public class EmbeddedProxy {
         tomcat.start();
         System.out.println("[tomcat] :" + port
             + "  stripHopByHop=" + Boolean.getBoolean("stripHopByHop")
-            + "  -> upstream http://127.0.0.1:8000");
+            + "  -> upstream http://127.0.0.1:4000");
         tomcat.getServer().await();
     }
 }

@@ -1,19 +1,22 @@
-2026/06/01 12:59:15 [notice] 17664#2936: using the "select" event method
-2026/06/01 12:59:15 [notice] 17664#2936: nginx/1.31.1
-2026/06/01 12:59:15 [info] 17664#2936: OS: 260200 build:9200, "", suite:300, type:1
-2026/06/01 12:59:15 [notice] 17664#2936: start worker processes
-2026/06/01 12:59:15 [notice] 17664#2936: start worker process 10860
-2026/06/01 12:59:15 [notice] 10860#9540: nginx/1.31.1
-2026/06/01 12:59:15 [info] 10860#9540: OS: 260200 build:9200, "", suite:300, type:1
-2026/06/01 12:59:15 [notice] 10860#9540: create thread 3652
-2026/06/01 12:59:15 [notice] 10860#9540: create thread 4412
-2026/06/01 12:59:15 [notice] 10860#9540: create thread 11208
-2026/06/01 12:59:29 [error] 10860#3652: *1 upstream sent "Content-Length" and "Transfer-Encoding" headers at the same time while reading response header from upstream, client: 127.0.0.1, server: , request: "GET / HTTP/1.1", upstream: "http://127.0.0.1:8080/", host: "127.0.0.1:8088"
-2026/06/01 12:59:29 [info] 10860#3652: *1 client 127.0.0.1 closed keepalive connection
-2026/06/01 12:59:31 [error] 10860#3652: *3 upstream sent duplicate header line: "Transfer-Encoding: chunked", previous value: "transfer-encoding: chunked" while reading response header from upstream, client: 127.0.0.1, server: , request: "GET /sse HTTP/1.1", upstream: "http://127.0.0.1:8080/sse", host: "127.0.0.1:8088"
-2026/06/01 12:59:31 [info] 10860#3652: *3 client 127.0.0.1 closed keepalive connection
-2026/06/01 13:00:11 [info] 10860#3652: *5 client 127.0.0.1 closed keepalive connection
-2026/06/01 13:00:36 [notice] 3312#9724: signal process started
-2026/06/01 13:00:36 [notice] 17664#2936: shutting down
-2026/06/01 13:00:36 [notice] 10860#9540: gracefully shutting down
-2026/06/01 13:00:36 [notice] 10860#4412: exiting
+2026/06/01 15:28:53 [notice] 15832#6668: using the "select" event method
+2026/06/01 15:28:53 [notice] 15832#6668: nginx/1.31.1
+2026/06/01 15:28:53 [info] 15832#6668: OS: 260200 build:9200, "", suite:300, type:1
+2026/06/01 15:28:53 [notice] 15832#6668: start worker processes
+2026/06/01 15:28:53 [notice] 15832#6668: start worker process 18880
+2026/06/01 15:28:54 [notice] 18880#22896: nginx/1.31.1
+2026/06/01 15:28:54 [info] 18880#22896: OS: 260200 build:9200, "", suite:300, type:1
+2026/06/01 15:28:54 [notice] 18880#22896: create thread 9776
+2026/06/01 15:28:54 [notice] 18880#22896: create thread 7868
+2026/06/01 15:28:54 [notice] 18880#22896: create thread 22320
+2026/06/01 15:28:58 [error] 18880#9776: *1 upstream sent duplicate header line: "Transfer-Encoding: chunked", previous value: "transfer-encoding: chunked" while reading response header from upstream, client: 127.0.0.1, server: , request: "GET /sse HTTP/1.1", upstream: "http://127.0.0.1:4003/sse", host: "127.0.0.1:4088"
+2026/06/01 15:28:58 [info] 18880#9776: *1 client 127.0.0.1 closed keepalive connection
+2026/06/01 15:29:04 [info] 18880#9776: *3 client 127.0.0.1 closed keepalive connection
+2026/06/01 15:29:05 [info] 18880#9776: *5 client 127.0.0.1 closed keepalive connection
+2026/06/01 15:29:06 [notice] 11752#16904: signal process started
+2026/06/01 15:29:06 [notice] 15832#6668: shutting down
+2026/06/01 15:29:06 [notice] 18880#22896: gracefully shutting down
+2026/06/01 15:29:06 [notice] 18880#7868: exiting
+2026/06/01 15:29:06 [notice] 18880#9776: exiting
+2026/06/01 15:29:06 [notice] 18880#22896: exit
+2026/06/01 15:29:06 [notice] 15832#6668: worker process 18880 exited with code 0
+2026/06/01 15:29:06 [notice] 15832#6668: exit

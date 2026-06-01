@@ -19,11 +19,12 @@ import java.util.*;
  * on the wire -> NGINX returns 200 and the SSE stream flows.
  *
  * Run (JDK 11+, no build tool needed):  java FixedProxy.java
+ * Topology:  client -> [this proxy : 4002] -> Uvicorn/FastAPI : 4000
  */
 public class FixedProxy {
     static final String UP_HOST = "127.0.0.1";
-    static final int    UP_PORT = 8000;
-    static final int    LISTEN  = 8080;
+    static final int    UP_PORT = 4000;
+    static final int    LISTEN  = 4002;
 
     // RFC 7230 6.1 hop-by-hop headers + length/framing headers a proxy must NOT copy verbatim.
     // A correct proxy strips these and applies its own framing for its own outbound hop.

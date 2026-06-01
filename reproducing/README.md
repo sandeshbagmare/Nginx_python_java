@@ -7,13 +7,18 @@ This folder reproduces the duplicate‑`Transfer-Encoding` 502 **and** cures it,
 production container — so the bug and the fix both show up for real.
 
 ```
-client ──▶ NGINX :8088 ──▶ Tomcat + AIAssistantProxyServlet :8080 ──▶ Uvicorn/FastAPI :8000 (SSE)
+client ──▶ NGINX :4088 ──▶ Tomcat + AIAssistantProxyServlet :4003 ──▶ Uvicorn/FastAPI :4000 (SSE)
 ```
 
 ## Run it
 
+**Windows (PowerShell — recommended):**
+```powershell
+powershell -ExecutionPolicy Bypass -File run.ps1
+```
+
+**Linux / macOS / Git Bash:**
 ```bash
-# from this folder (reuses ../.venv and ../nginx-1.31.1; run ../scripts/setup.sh once if missing)
 ./run.sh
 ```
 
@@ -24,14 +29,14 @@ NGINX, then runs **two phases** against the same NGINX and tears everything down
 
 ```
 ################ PHASE 1 — FAULTY servlet (stripHopByHop=false) ################
-  servlet direct :8080   Transfer-Encoding count = 2   (expect 2)
-  via NGINX :8088        HTTP 502                          (expect 502)
+  servlet direct :4003   Transfer-Encoding count = 2   (expect 2)
+  via NGINX :4088        HTTP 502                          (expect 502)
   nginx error.log      : *1 upstream sent duplicate header line: "Transfer-Encoding: chunked",
-                         previous value: "transfer-encoding: chunked" ... upstream: "http://127.0.0.1:8080/sse"
+                         previous value: "transfer-encoding: chunked" ... upstream: "http://127.0.0.1:4003/sse"
 
 ################ PHASE 2 — FIXED servlet (stripHopByHop=true) ################
-  servlet direct :8080   Transfer-Encoding count = 1   (expect 1)
-  via NGINX :8088        HTTP 200                          (expect 200)
+  servlet direct :4003   Transfer-Encoding count = 1   (expect 1)
+  via NGINX :4088        HTTP 200                          (expect 200)
   stream via NGINX:
       data: message 0
       data: message 1
@@ -77,8 +82,9 @@ In your production servlet you simply keep the `HOP_BY_HOP_HEADERS.contains(...)
 AIAssistantProxyServlet.java   faithful servlet; STRIP_HOP_BY_HOP gates faulty/fixed
 EmbeddedProxy.java             boots embedded Tomcat, mounts the servlet at /*
 app.py                         FastAPI SSE upstream (correct; one Transfer-Encoding)
-sse.conf                       NGINX :8088 -> servlet :8080
+sse.conf                       NGINX :4088 -> servlet :4003
 run-nginx.ps1                  start/stop nginx (reuses ../nginx-1.31.1)
-run.sh                         downloads Tomcat, compiles, runs both phases, prints PASS
+run.ps1                        Windows PowerShell: downloads Tomcat, compiles, runs both phases
+run.sh                         Linux/macOS/Git Bash equivalent
 lib/  out/                     downloaded jars + compiled classes (git-ignored)
 ```

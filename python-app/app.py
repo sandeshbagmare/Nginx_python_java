@@ -8,7 +8,7 @@ Uvicorn's protocol layer frames the body as chunked and emits EXACTLY ONE
 Uvicorn HTTP backends -- see ../evidence/1-uvicorn-direct.txt.)
 
 Run (from repo root):
-    ./.venv/Scripts/python.exe -m uvicorn app:app --app-dir python-app --host 127.0.0.1 --port 8000
+    .venv\Scripts\python.exe -m uvicorn app:app --app-dir python-app --host 127.0.0.1 --port 4000
 """
 import asyncio
 

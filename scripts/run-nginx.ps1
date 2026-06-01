@@ -1,4 +1,5 @@
 # Start/stop native nginx.  Usage:  powershell -File scripts/run-nginx.ps1 [start|stop]
+# NGINX listens on 127.0.0.1:4088 and proxies to the Java proxy.
 param([string]$Action = "start")
 
 $root   = Split-Path -Parent $PSScriptRoot

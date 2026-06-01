@@ -1,7 +1,7 @@
 """Upstream SSE app (FastAPI/Uvicorn) — the 'Python app' from the bug report.
 Correct: emits exactly one Transfer-Encoding for the stream; never sets it itself.
 
-Run:  python -m uvicorn app:app --app-dir . --host 127.0.0.1 --port 8000
+Run:  python -m uvicorn app:app --app-dir . --host 127.0.0.1 --port 4000
 """
 import asyncio
 from fastapi import FastAPI

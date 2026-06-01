@@ -23,7 +23,7 @@ when it streams the body → **two** header lines → modern NGINX returns **502
 ```
             ┌──────────┐        ┌──────────────────┐        ┌──────────────────┐
  client ───▶│  NGINX   │ ─────▶ │   Java proxy     │ ─────▶ │  FastAPI/Uvicorn │
-            │  :8088   │        │   :8080          │        │  :8000  (SSE)    │
+            │  :4088   │        │   :4001          │        │  :4000  (SSE)    │
             └──────────┘        └──────────────────┘        └──────────────────┘
                  ▲                       │                          │
                  │                       │ (1) copies upstream      │ sends ONE
@@ -82,9 +82,11 @@ The proxy logs its own accounting ([evidence 5](evidence/5-proxy-accounting.txt)
 │   └── sse.conf               NGINX front door (:8088 → :8080)
 ├── evidence/                  captured outputs (1–5) proving each step
 ├── scripts/
-│   ├── setup.sh               venv + deps + download nginx
-│   ├── run-uvicorn.sh / run-proxy.sh [naive|fixed] / run-nginx.ps1 [start|stop]
-│   └── reproduce.sh           one-command end-to-end PASS/FAIL
+│   ├── setup.sh / setup.ps1          venv + deps + download nginx
+│   ├── run-uvicorn.sh / run-uvicorn.ps1
+│   ├── run-proxy.sh [naive|fixed] / run-proxy.ps1 [naive|fixed]
+│   ├── run-nginx.ps1 [start|stop]
+│   └── reproduce.sh / reproduce.ps1  one-command end-to-end PASS/FAIL
 └── docs/
     ├── root-cause.md          the deep technical explanation
     ├── reproduction.md        step-by-step with expected output
@@ -94,13 +96,29 @@ The proxy logs its own accounting ([evidence 5](evidence/5-proxy-accounting.txt)
 
 ## Quickstart
 
-Prereqs: **JDK 11+** (tested on 21), **Python 3.x** (tested on 3.13), **curl**, and either Windows
-(PowerShell, for the bundled native nginx) or any nginx ≥ 1.23.
+Prereqs: **JDK 11+** (tested on 21), **Python 3.x** (tested on 3.13), **curl**.
 
-```bash
-./scripts/setup.sh        # one time: venv + deps + download nginx 1.31.1
-./scripts/reproduce.sh    # starts the full chain and prints PASS
+**Windows (PowerShell):**
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
+powershell -ExecutionPolicy Bypass -File scripts\reproduce.ps1
 ```
+
+**Linux / macOS / Git Bash:**
+```bash
+./scripts/setup.sh
+./scripts/reproduce.sh
+```
+
+Port map (no collisions with common dev ports):
+
+| Component | Port |
+|-----------|------|
+| FastAPI / Uvicorn | **4000** |
+| NaiveProxy (faulty) | **4001** |
+| FixedProxy (fixed) | **4002** |
+| Tomcat / EmbeddedProxy | **4003** |
+| NGINX front door | **4088** |
 
 Expected tail:
 
