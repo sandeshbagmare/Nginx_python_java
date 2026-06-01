@@ -37,6 +37,7 @@ param(
     [string]$Username,                                    # optional Basic auth -> sent to the TARGET
     [string]$Password,
     [string]$DuplicateHeader = 'Transfer-Encoding',       # which header to duplicate in faulty mode
+    [string]$Payload,                                     # optional JSON payload for POST requests
     [string]$NginxDir,                                    # default: <scriptdir>\nginx-1.31.1
     [switch]$NoUpstream,                                  # serve a synthetic SSE response (no backend)
     [string]$ExternalProxyUrl,                            # test an external Java proxy instead of the built-in one
@@ -248,7 +249,7 @@ function SayLine($c = 'DarkGray') { Say ('  ' + ('-' * 66)) $c }
 # =====================================================================================
 #  RELIABLE HEADER COUNTING  (uses curl -D tempfile so NO stdout interleaving)
 # =====================================================================================
-function Get-RawHeaders([string]$url, [string]$httpMethod = 'GET') {
+function Get-RawHeaders([string]$url, [string]$httpMethod = 'GET', [string]$reqPayload = '') {
     <#
     .SYNOPSIS
       Sends a request with curl.exe, captures response headers to a temp file,
@@ -264,7 +265,9 @@ function Get-RawHeaders([string]$url, [string]$httpMethod = 'GET') {
         # -s          : silent (no progress)
         # --max-time  : don't hang on streaming endpoints
         # --raw       : don't decode transfer-encoding (keeps header bytes literal)
-        & $curl -s -X $httpMethod --raw -D $hdrFile -o NUL --max-time 10 $url 2>$null
+        $cArgs = @('-s', '-X', $httpMethod, '--raw', '-D', $hdrFile, '-o', 'NUL', '--max-time', '10')
+        if ($reqPayload) { $cArgs += @('-d', $reqPayload, '-H', 'Content-Type: application/json') }
+        & $curl @cArgs $url 2>$null
         if (Test-Path $hdrFile) {
             return (Get-Content $hdrFile -Raw)
         }
@@ -285,8 +288,10 @@ function Count-Header([string]$rawHeaders, [string]$headerName) {
     return ([regex]::Matches($rawHeaders, $pattern)).Count
 }
 
-function Get-HttpStatus([string]$url, [string]$httpMethod = 'GET') {
-    return (& $curl -s -X $httpMethod -o NUL -w '%{http_code}' --max-time 10 $url 2>$null)
+function Get-HttpStatus([string]$url, [string]$httpMethod = 'GET', [string]$reqPayload = '') {
+    $cArgs = @('-s', '-X', $httpMethod, '-o', 'NUL', '-w', '%{http_code}', '--max-time', '10')
+    if ($reqPayload) { $cArgs += @('-d', $reqPayload, '-H', 'Content-Type: application/json') }
+    return (& $curl @cArgs $url 2>$null)
 }
 
 # =====================================================================================
@@ -328,6 +333,12 @@ if (-not $NonInteractive) {
         $hm = Read-Host '  Method [GET/POST] (default: GET)'
         if ($hm -eq 'POST' -or $hm -eq 'post') { $Method = 'POST' }
     }
+    if ($Method -eq 'POST' -and -not $PSBoundParameters.ContainsKey('Payload')) {
+        Say ''
+        Say '  Enter JSON payload for POST request (optional).' 'Yellow'
+        $pl = Read-Host '  Payload (e.g. {"message":"hi"})'
+        if (-not [string]::IsNullOrWhiteSpace($pl)) { $Payload = $pl }
+    }
     if (-not $Username) {
         Say ''
         Say '  Optional: Basic-auth credentials sent to the TARGET.' 'Yellow'
@@ -366,7 +377,23 @@ $errLog  = Join-Path $logsDir 'duphdr-error.log'
 $confPath = Join-Path $NginxDir 'conf\duphdr.conf'
 $pidPath  = Join-Path $logsDir 'duphdr.pid'
 
-$nginxProxyPass = if ($ExternalProxyUrl) { $ExternalProxyUrl.TrimEnd('/') } else { "http://127.0.0.1:$ProxyPort" }
+$reqPath = '/sse'
+$nginxProxyPass = "http://127.0.0.1:$ProxyPort"
+if ($ExternalProxyUrl) {
+    try {
+        $u = [System.Uri]$ExternalProxyUrl
+        $nginxProxyPass = "$($u.Scheme)://$($u.Host):$($u.Port)"
+        if ($u.PathAndQuery -and $u.PathAndQuery -ne '/') { $reqPath = $u.PathAndQuery }
+    } catch {
+        $nginxProxyPass = $ExternalProxyUrl.TrimEnd('/')
+    }
+} elseif (-not $NoUpstream) {
+    try {
+        $p = ([System.Uri]$TargetUrl).PathAndQuery
+        if ($p) { $reqPath = $p }
+    } catch {}
+}
+
 $fwd = { param($p) ($p -replace '\\','/') }
 $nginxConf = @"
 worker_processes  1;
@@ -390,13 +417,6 @@ http {
 "@
 Set-Content -Path $confPath -Value $nginxConf -Encoding ascii
 
-$reqPath = '/sse'
-if (-not $NoUpstream) {
-    try {
-        $p = ([System.Uri]$TargetUrl).PathAndQuery
-        if ($p) { $reqPath = $p }
-    } catch {}
-}
 $guid1 = [Guid]::NewGuid().ToString('N')
 $guid2 = [Guid]::NewGuid().ToString('N')
 $proxyOut = Join-Path ([IO.Path]::GetTempPath()) "duphdr-proxy-$guid1.log"
@@ -494,16 +514,16 @@ try {
     Say ''
 
     # --- Direct to proxy (bypassing nginx) ---
-    $directUrl  = if ($ExternalProxyUrl) { "$ExternalProxyUrl$reqPath" } else { "http://127.0.0.1:$ProxyPort$reqPath" }
-    $directHdrs = Get-RawHeaders $directUrl $Method
+    $directUrl  = "$nginxProxyPass$reqPath"
+    $directHdrs = Get-RawHeaders $directUrl $Method $Payload
     $directCount = Count-Header $directHdrs $DuplicateHeader
 
     # --- Through nginx ---
     Start-Sleep -Milliseconds 500  # let nginx settle after its startup test request
     if (Test-Path $errLog) { Clear-Content $errLog }  # clear so we capture ONLY the real test
     $nginxUrl   = "http://127.0.0.1:$NginxPort$reqPath"
-    $nginxHdrs  = Get-RawHeaders $nginxUrl $Method
-    $nginxStatus = Get-HttpStatus $nginxUrl $Method
+    $nginxHdrs  = Get-RawHeaders $nginxUrl $Method $Payload
+    $nginxStatus = Get-HttpStatus $nginxUrl $Method $Payload
     $nginxCount  = Count-Header $nginxHdrs $DuplicateHeader
 
     # Read nginx error log for duplicate-header messages
@@ -644,8 +664,9 @@ try {
     SayLine 'Cyan'
     Say ''
     Say '  Manual test commands:' 'DarkGray'
-    Say "    curl -X $Method -i -N http://127.0.0.1:$NginxPort$reqPath" 'DarkGray'
-    Say "    curl -X $Method -i -N $directUrl" 'DarkGray'
+    $dFlag = if ($Payload) { "-d `"$Payload`" -H `"Content-Type: application/json`" " } else { "" }
+    Say "    curl -X $Method $dFlag-i -N http://127.0.0.1:$NginxPort$reqPath" 'DarkGray'
+    Say "    curl -X $Method $dFlag-i -N $directUrl" 'DarkGray'
     Say ''
 
     if (-not $NonInteractive) { Read-Host '  Services are running. Press Enter to stop nginx + proxy and exit' | Out-Null }
