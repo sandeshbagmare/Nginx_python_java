@@ -429,7 +429,7 @@ try {
     $ok = $false
     for ($i=0; $i -lt 60; $i++) {
         & $curl -s -X $Method -o NUL "http://127.0.0.1:$ProxyPort$reqPath" 2>$null
-        if ($LASTEXITCODE -eq 0) { $ok = $true; break }
+        if ($LASTEXITCODE -ne 7) { $ok = $true; break }
         Start-Sleep -Milliseconds 300
     }
     if (-not $ok) {

@@ -8,6 +8,7 @@ $here = $PSScriptRoot
 Set-Location $here
 $parent = Split-Path -Parent $here
 
+# Use venv from parent folder (../.venv)
 $py = Join-Path $parent ".venv\Scripts\python.exe"
 if (-not (Test-Path $py)) {
     $py = Join-Path $parent ".venv\bin\python"
@@ -84,8 +85,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "compile failed" }
 
     Write-Host "==> starting Uvicorn :4000"
-    $script:uv = Start-Process -FilePath $py -ArgumentList @(
-        "-m","uvicorn","app:app","--app-dir",".","--host","127.0.0.1","--port","4000","--log-level","warning"
+    $script:uv = Start-Process -FilePath $py -WorkingDirectory $here -ArgumentList @(
+        "-m","uvicorn","app:app","--app-dir",$here,"--host","127.0.0.1","--port","4000","--log-level","warning"
     ) -PassThru -NoNewWindow `
       -RedirectStandardOutput (New-TempLog "uvicorn-out") `
       -RedirectStandardError  (New-TempLog "uvicorn-err")
