@@ -259,14 +259,13 @@ function Get-RawHeaders([string]$url, [string]$httpMethod = 'GET', [string]$reqP
     #>
     $guid = [Guid]::NewGuid().ToString('N')
     $hdrFile = Join-Path ([IO.Path]::GetTempPath()) "duphdr-hdrs-$guid.txt"
+    $payloadFile = Join-Path ([IO.Path]::GetTempPath()) "duphdr-payload-$guid.txt"
     try {
-        # -D file     : dump headers to file (NOT stdout) -- this is the KEY fix
-        # -o NUL      : discard body
-        # -s          : silent (no progress)
-        # --max-time  : don't hang on streaming endpoints
-        # --raw       : don't decode transfer-encoding (keeps header bytes literal)
         $cArgs = @('-s', '-X', $httpMethod, '--raw', '-D', $hdrFile, '-o', 'NUL', '--max-time', '10')
-        if ($reqPayload) { $cArgs += @('-d', $reqPayload, '-H', 'Content-Type: application/json') }
+        if ($reqPayload) {
+            Set-Content -Path $payloadFile -Value $reqPayload -Encoding UTF8
+            $cArgs += @('-d', "`@$payloadFile", '-H', 'Content-Type: application/json')
+        }
         & $curl @cArgs $url 2>$null
         if (Test-Path $hdrFile) {
             return (Get-Content $hdrFile -Raw)
@@ -274,6 +273,7 @@ function Get-RawHeaders([string]$url, [string]$httpMethod = 'GET', [string]$reqP
         return ''
     } finally {
         Remove-Item $hdrFile -ErrorAction SilentlyContinue
+        if ($reqPayload) { Remove-Item $payloadFile -ErrorAction SilentlyContinue }
     }
 }
 
@@ -289,9 +289,18 @@ function Count-Header([string]$rawHeaders, [string]$headerName) {
 }
 
 function Get-HttpStatus([string]$url, [string]$httpMethod = 'GET', [string]$reqPayload = '') {
-    $cArgs = @('-s', '-X', $httpMethod, '-o', 'NUL', '-w', '%{http_code}', '--max-time', '10')
-    if ($reqPayload) { $cArgs += @('-d', $reqPayload, '-H', 'Content-Type: application/json') }
-    return (& $curl @cArgs $url 2>$null)
+    $guid = [Guid]::NewGuid().ToString('N')
+    $payloadFile = Join-Path ([IO.Path]::GetTempPath()) "duphdr-payload-status-$guid.txt"
+    try {
+        $cArgs = @('-s', '-X', $httpMethod, '-o', 'NUL', '-w', '%{http_code}', '--max-time', '10')
+        if ($reqPayload) {
+            Set-Content -Path $payloadFile -Value $reqPayload -Encoding UTF8
+            $cArgs += @('-d', "`@$payloadFile", '-H', 'Content-Type: application/json')
+        }
+        return (& $curl @cArgs $url 2>$null)
+    } finally {
+        if ($reqPayload) { Remove-Item $payloadFile -ErrorAction SilentlyContinue }
+    }
 }
 
 # =====================================================================================
