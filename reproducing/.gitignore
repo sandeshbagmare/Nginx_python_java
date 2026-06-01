@@ -1,0 +1,3 @@
+# Downloaded embedded-Tomcat jars (re-fetched by run.sh) and compiled classes.
+lib/*.jar
+out/
