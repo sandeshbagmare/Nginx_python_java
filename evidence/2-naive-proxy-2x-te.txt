@@ -1,0 +1,19 @@
+# Evidence 2 — Through the NAIVE Java proxy (the FAULTY layer)
+# These are the exact bytes NGINX receives. Command:
+#   curl -D - -N http://127.0.0.1:8080/sse
+
+HTTP/1.1 200 OK
+date: Mon, 01 Jun 2026 07:28:35 GMT
+server: uvicorn
+cache-control: no-cache
+x-accel-buffering: no
+content-type: text/event-stream; charset=utf-8
+transfer-encoding: chunked
+Transfer-Encoding: chunked
+Connection: close
+
+## Transfer-Encoding header count (note TWO lines, different casing):
+2
+## the two duplicated lines:
+7:transfer-encoding: chunked
+8:Transfer-Encoding: chunked

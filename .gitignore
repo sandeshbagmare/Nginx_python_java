@@ -1,0 +1,13 @@
+# Python virtualenv + bytecode
+.venv/
+__pycache__/
+*.pyc
+
+# Downloaded / extracted nginx (re-fetched by scripts/setup.sh)
+
+# Background task logs
+*.output
+
+# OS cruft
+.DS_Store
+Thumbs.db

@@ -1,0 +1,22 @@
+# Evidence 1 — Uvicorn/FastAPI direct (the Python layer is CORRECT)
+# Captured live: nginx not involved. Command:
+#   curl -D - -N http://127.0.0.1:8000/sse
+
+## /plain  (fixed-length JSON -> Content-Length, NO Transfer-Encoding)
+HTTP/1.1 200 OK
+date: Mon, 01 Jun 2026 07:28:07 GMT
+server: uvicorn
+content-length: 11
+content-type: application/json
+
+## /sse    (Starlette StreamingResponse -> exactly ONE Transfer-Encoding)
+HTTP/1.1 200 OK
+date: Mon, 01 Jun 2026 07:28:07 GMT
+server: uvicorn
+cache-control: no-cache
+x-accel-buffering: no
+content-type: text/event-stream; charset=utf-8
+transfer-encoding: chunked
+
+## Transfer-Encoding header count on /sse:
+1

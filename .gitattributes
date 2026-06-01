@@ -1,0 +1,9 @@
+# Normalize line endings across platforms.
+* text=auto eol=lf
+
+# Shell scripts MUST stay LF so they run on Linux/macOS after a Windows checkout.
+*.sh   text eol=lf
+
+# Windows-native helpers keep CRLF.
+*.ps1  text eol=crlf
+*.bat  text eol=crlf
