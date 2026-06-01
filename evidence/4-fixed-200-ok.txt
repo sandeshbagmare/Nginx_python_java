@@ -1,9 +1,9 @@
 # Evidence 4 — NGINX in front of the FIXED proxy: the fix works
-# Command:  curl -i -N http://127.0.0.1:8088/sse
+#   curl -i -N http://127.0.0.1:4088/sse
 
 HTTP/1.1 200 OK
 Server: nginx/1.31.1
-Date: Mon, 01 Jun 2026 07:30:11 GMT
+Date: Mon, 01 Jun 2026 10:02:27 GMT
 Content-Type: text/event-stream; charset=utf-8
 Transfer-Encoding: chunked
 Connection: keep-alive
@@ -20,5 +20,5 @@ data: message 3
 data: message 4
 
 
-# Transfer-Encoding count through the fixed proxy directly (expect 1):
+# Transfer-Encoding count through the fixed proxy directly (4002), expect 1:
 1

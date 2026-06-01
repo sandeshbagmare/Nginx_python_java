@@ -76,7 +76,7 @@ The error log reads:
 ```
 upstream sent duplicate header line: "Transfer-Encoding: chunked",
         previous value: "transfer-encoding: chunked"
-        ... request: "GET /sse HTTP/1.1", upstream: "http://127.0.0.1:8080/sse"
+        ... request: "GET /sse HTTP/1.1", upstream: "http://127.0.0.1:4001/sse"
 ```
 
 Three things make people wrongly blame the Python app:
@@ -88,7 +88,7 @@ Three things make people wrongly blame the Python app:
 2. **The faulty proxy forwards `Server: uvicorn`.** Inspecting the response (or
    `$upstream_http_server`) shows `uvicorn`, making it look like the response came straight from Python.
 3. **But `upstream:` tells the truth.** That field is the address NGINX actually connected to —
-   `http://127.0.0.1:8080/sse`, the **Java proxy** (port 8080), not Uvicorn (port 8000).
+   `http://127.0.0.1:4001/sse`, the **Java proxy** (port 4001), not Uvicorn (port 4000).
 
 Decisive test: `curl` Uvicorn directly → **one** TE; `curl` the Java proxy directly → **two** TE. The
 duplication appears only across the Java hop.

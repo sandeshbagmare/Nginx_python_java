@@ -6,8 +6,8 @@ import org.apache.catalina.startup.Tomcat;
  * This is the "Java proxy on Tomcat" layer from the bug report.
  *
  * Run:
- *   java -DstripHopByHop=false -Dport=8080 -cp "out;lib/*" EmbeddedProxy   # FAULTY
- *   java -DstripHopByHop=true  -Dport=8080 -cp "out;lib/*" EmbeddedProxy   # FIXED
+ *   java -DstripHopByHop=false -Dport=4003 -cp "out;lib/*" EmbeddedProxy   # FAULTY
+ *   java -DstripHopByHop=true  -Dport=4003 -cp "out;lib/*" EmbeddedProxy   # FIXED
  */
 public class EmbeddedProxy {
     public static void main(String[] args) throws Exception {

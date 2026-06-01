@@ -11,3 +11,6 @@ __pycache__/
 # OS cruft
 .DS_Store
 Thumbs.db
+
+# nginx runtime logs (never repo content)
+nginx-1.31.1/logs/

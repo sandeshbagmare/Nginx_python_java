@@ -79,7 +79,7 @@ The proxy logs its own accounting ([evidence 5](evidence/5-proxy-accounting.txt)
 │   ├── FixedProxy.java        ✅ FIXED   — strips hop-by-hop headers (the one-block diff)
 │   └── HttpServerProxy.java   realistic JDK variant + the "HttpServer de-dups" nuance
 ├── nginx/
-│   └── sse.conf               NGINX front door (:8088 → :8080)
+│   └── sse.conf               NGINX front door (:4088 → :4001)
 ├── evidence/                  captured outputs (1–5) proving each step
 ├── scripts/
 │   ├── setup.sh / setup.ps1          venv + deps + download nginx
@@ -138,7 +138,7 @@ a `Transfer-Encoding` header for the proxy to (wrongly) copy. See **[docs/root-c
 
 A red herring. The lowercase `previous value: "transfer-encoding: chunked"` is literally Uvicorn's header
 (Uvicorn writes lowercase names), and the faulty proxy also forwards `Server: uvicorn`. NGINX's real peer
-is the **Java proxy** — see the `upstream: "http://127.0.0.1:8080/sse"` field in
+is the **Java proxy** — see the `upstream: "http://127.0.0.1:4001/sse"` field in
 [evidence 3](evidence/3-nginx-502-error.log). Full explanation in
 **[docs/root-cause.md](docs/root-cause.md#why-nginx-seems-to-blame-uvicorn)**.
 

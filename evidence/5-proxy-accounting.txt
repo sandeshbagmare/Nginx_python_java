@@ -2,17 +2,11 @@
 
 NAIVE proxy (java-proxy/NaiveProxy.java) stdout:
   [NAIVE] copied-TE-from-upstream=1 + framing-TE=1  => Transfer-Encoding lines on wire=2
-  [NAIVE] java.net.SocketException: Connection reset by peer
-        ^ expected: NGINX hangs up the upstream connection after it rejects the 2 headers.
 
 FIXED proxy (java-proxy/FixedProxy.java) stdout:
   [FIXED] copied-TE-from-upstream=0 + framing-TE=1  => Transfer-Encoding lines on wire=1
 
 Two INDEPENDENT code paths each contribute a Transfer-Encoding header:
-  (1) copying the hop-by-hop header from the upstream response   <- THE BUG  (NAIVE=1, FIXED=0)
-  (2) the proxy server's own chunked framing of the body          <- always 1 (correct)
-
-NAIVE = (1)+(2) = 2 headers  -> NGINX 502
-FIXED = (0)+(2) = 1 header   -> NGINX 200
-
-The fix removes (1) by stripping hop-by-hop headers; (2) alone is correct framing.
+  (1) copying the hop-by-hop header from the upstream response  <- THE BUG  (NAIVE=1, FIXED=0)
+  (2) the proxy server's own chunked framing of the body         <- always 1 (correct)
+NAIVE = (1)+(2) = 2 headers -> NGINX 502 ;  FIXED = (0)+(2) = 1 header -> NGINX 200

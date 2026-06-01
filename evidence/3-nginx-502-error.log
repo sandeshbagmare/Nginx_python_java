@@ -1,9 +1,9 @@
 # Evidence 3 — NGINX 1.31.1 in front of the NAIVE proxy: the reported failure
-# Command:  curl -i -N http://127.0.0.1:8088/sse
+#   curl -i -N http://127.0.0.1:4088/sse
 
 HTTP/1.1 502 Bad Gateway
 Server: nginx/1.31.1
-Date: Mon, 01 Jun 2026 07:29:31 GMT
+Date: Mon, 01 Jun 2026 10:02:18 GMT
 Content-Type: text/html
 Content-Length: 157
 Connection: keep-alive
@@ -17,4 +17,4 @@ Connection: keep-alive
 </html>
 
 # ---- nginx error.log (the exact line from the bug report) ----
-2026/06/01 12:59:31 [error] 10860#3652: *3 upstream sent duplicate header line: "Transfer-Encoding: chunked", previous value: "transfer-encoding: chunked" while reading response header from upstream, client: 127.0.0.1, server: , request: "GET /sse HTTP/1.1", upstream: "http://127.0.0.1:8080/sse", host: "127.0.0.1:8088"
+2026/06/01 15:32:18 [error] 24016#23024: *3 upstream sent duplicate header line: "Transfer-Encoding: chunked", previous value: "transfer-encoding: chunked" while reading response header from upstream, client: 127.0.0.1, server: , request: "GET /sse HTTP/1.1", upstream: "http://127.0.0.1:4001/sse", host: "127.0.0.1:4088"

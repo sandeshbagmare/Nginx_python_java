@@ -9,7 +9,7 @@
   your package manager's nginx (see [Non‑Windows](#non-windows--docker) below).
 - Windows users: **PowerShell** (to launch the native nginx) and **Git Bash** (for the `.sh` scripts).
 
-Ports used: Uvicorn **8000**, Java proxy **8080**, NGINX **8088**.
+Ports used: Uvicorn **4000**, Java proxy **4001**, NGINX **4088**.
 
 ## One command
 
@@ -36,7 +36,7 @@ and checks the 200; then tears everything down.
 
 ### Step 1 — Uvicorn is correct (one TE)
 ```bash
-curl -s -D - -N -o /dev/null http://127.0.0.1:8000/sse | grep -ci '^Transfer-Encoding:'
+curl -s -D - -N -o /dev/null http://127.0.0.1:4000/sse | grep -ci '^Transfer-Encoding:'
 # => 1
 ```
 Full capture: [`evidence/1-uvicorn-direct.txt`](../evidence/1-uvicorn-direct.txt). Note `/plain` has
@@ -45,7 +45,7 @@ Full capture: [`evidence/1-uvicorn-direct.txt`](../evidence/1-uvicorn-direct.txt
 ### Step 2 — the NAIVE proxy duplicates it (two TE)
 ```bash
 ./scripts/run-proxy.sh naive        # in another terminal
-curl -s -D - -N -o /dev/null http://127.0.0.1:8080/sse | grep -in 'transfer-encoding'
+curl -s -D - -N -o /dev/null http://127.0.0.1:4001/sse | grep -in 'transfer-encoding'
 # 7:transfer-encoding: chunked      <- copied from Uvicorn
 # 8:Transfer-Encoding: chunked      <- the proxy's own framing
 ```
@@ -54,7 +54,7 @@ Full capture: [`evidence/2-naive-proxy-2x-te.txt`](../evidence/2-naive-proxy-2x-
 ### Step 3 — NGINX rejects it (502 + the reported log line)
 ```bash
 powershell -File scripts/run-nginx.ps1 start    # or: nginx -p nginx-1.31.1 -c nginx/sse.conf
-curl -s -i -N http://127.0.0.1:8088/sse | head -1
+curl -s -i -N http://127.0.0.1:4088/sse | head -1
 # HTTP/1.1 502 Bad Gateway
 grep 'duplicate header line' nginx-1.31.1/logs/error.log | tail -1
 ```
@@ -64,7 +64,7 @@ Full capture: [`evidence/3-nginx-502-error.log`](../evidence/3-nginx-502-error.l
 ```bash
 # stop the naive proxy (Ctrl-C), then:
 ./scripts/run-proxy.sh fixed
-curl -s -i -N http://127.0.0.1:8088/sse
+curl -s -i -N http://127.0.0.1:4088/sse
 # HTTP/1.1 200 OK
 # Transfer-Encoding: chunked        <- single
 # data: message 0 ... (stream flows)
@@ -78,11 +78,11 @@ upstream sent duplicate header line: "Transfer-Encoding: chunked",   <- the offe
         previous value: "transfer-encoding: chunked"                 <- Uvicorn's original (lowercase)
         while reading response header from upstream,                 <- it's a RESPONSE-side problem
         request: "GET /sse HTTP/1.1",                                <- only the streaming route
-        upstream: "http://127.0.0.1:8080/sse"                        <- NGINX's real peer = the Java proxy
+        upstream: "http://127.0.0.1:4001/sse"                        <- NGINX's real peer = the Java proxy
 ```
 
-The `upstream:` field is the proof of which layer NGINX actually talked to. It is **8080 (the Java
-proxy)**, not 8000 (Uvicorn).
+The `upstream:` field is the proof of which layer NGINX actually talked to. It is **4001 (the Java
+proxy)**, not 4000 (Uvicorn).
 
 ## Non‑Windows / Docker
 
@@ -93,10 +93,10 @@ The Python app and Java proxies are OS‑agnostic. Only the nginx launch differs
 nginx -p "$PWD/nginx-run" -c "$PWD/nginx/sse.conf"      # ensure nginx-run/logs exists
 
 # or run nginx in Docker, pointing at the host proxy:
-docker run --rm -p 8088:8088 \
+docker run --rm -p 4088:4088 \
   -v "$PWD/nginx/sse.conf:/etc/nginx/nginx.conf:ro" \
   --add-host host.docker.internal:host-gateway nginx:1.27
-# (change proxy_pass to http://host.docker.internal:8080 for the container case)
+# (change proxy_pass to http://host.docker.internal:4001 for the container case)
 ```
 Any nginx ≥ 1.23 reproduces the 502; the behavior is not Windows‑specific.
 
