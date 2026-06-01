@@ -39,6 +39,7 @@ param(
     [string]$DuplicateHeader = 'Transfer-Encoding',       # which header to duplicate in faulty mode
     [string]$NginxDir,                                    # default: <scriptdir>\nginx-1.31.1
     [switch]$NoUpstream,                                  # serve a synthetic SSE response (no backend)
+    [string]$ExternalProxyUrl,                            # test an external Java proxy instead of the built-in one
     [switch]$NonInteractive,                              # skip prompts and keep-alive wait
     [switch]$AsProxy                                      # INTERNAL: run only the proxy listener
 )
@@ -307,6 +308,13 @@ if (-not $NonInteractive) {
         $t = Read-Host '  Target URL'
         if ([string]::IsNullOrWhiteSpace($t)) { $NoUpstream = $true } else { $TargetUrl = $t }
     }
+    if (-not $PSBoundParameters.ContainsKey('ExternalProxyUrl')) {
+        Say ''
+        Say '  Do you want to test your OWN external proxy (e.g. Java proxy)?' 'Yellow'
+        Say '  Leave blank to use the built-in lab proxy.' 'DarkGray'
+        $ep = Read-Host '  External Proxy URL (e.g. http://127.0.0.1:4001)'
+        if (-not [string]::IsNullOrWhiteSpace($ep)) { $ExternalProxyUrl = $ep }
+    }
     if (-not $PSBoundParameters.ContainsKey('Mode')) {
         Say ''
         Say "  Mode: 'faulty' reproduces the duplicate header (expect 502)." 'Yellow'
@@ -357,6 +365,8 @@ if (-not (Test-Path $logsDir)) { New-Item -ItemType Directory -Path $logsDir | O
 $errLog  = Join-Path $logsDir 'duphdr-error.log'
 $confPath = Join-Path $NginxDir 'conf\duphdr.conf'
 $pidPath  = Join-Path $logsDir 'duphdr.pid'
+
+$nginxProxyPass = if ($ExternalProxyUrl) { $ExternalProxyUrl.TrimEnd('/') } else { "http://127.0.0.1:$ProxyPort" }
 $fwd = { param($p) ($p -replace '\\','/') }
 $nginxConf = @"
 worker_processes  1;
@@ -368,7 +378,7 @@ http {
     server {
         listen 127.0.0.1:$NginxPort;
         location / {
-            proxy_pass http://127.0.0.1:$ProxyPort;
+            proxy_pass $nginxProxyPass;
             proxy_http_version 1.1;
             proxy_set_header Connection "";
             proxy_buffering off;
@@ -405,11 +415,12 @@ try {
     SayLine 'Cyan'
     $targetDisplay = if ($NoUpstream) { '(synthetic SSE -- no backend)' } else { $TargetUrl }
     $authDisplay = if ($Username) { "enabled (user '$Username') -> sent to target" } else { 'disabled' }
+    $proxyDisplay = if ($ExternalProxyUrl) { "$ExternalProxyUrl (External Java Proxy)" } else { "127.0.0.1:$ProxyPort (Built-in Lab Proxy)" }
     Say "  mode        : $Mode" 'White'
     Say "  method      : $Method" 'White'
     Say "  target      : $targetDisplay" 'White'
     Say "  auth        : $authDisplay" 'White'
-    Say "  proxy       : 127.0.0.1:$ProxyPort" 'White'
+    Say "  proxy       : $proxyDisplay" 'White'
     Say "  nginx       : 127.0.0.1:$NginxPort" 'White'
     Say "  duplicating : $DuplicateHeader" 'White'
     SayLine 'Cyan'
@@ -420,25 +431,29 @@ try {
     Start-Sleep -Milliseconds 500
 
     # ---- 1) start the raw-socket proxy (this very script, re-invoked with -AsProxy) ----
-    Say "  [1/4] Starting raw-socket proxy on :$ProxyPort ..." 'Cyan'
-    $childArgs = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-AsProxy',
-                   '-ProxyPort',$ProxyPort,'-Mode',$Mode,'-DuplicateHeader',$DuplicateHeader,'-Method',$Method,'-NonInteractive')
-    if ($NoUpstream) { $childArgs += '-NoUpstream' } else { $childArgs += @('-TargetUrl',$TargetUrl) }
-    if ($Username)   { $childArgs += @('-Username',$Username,'-Password',$Password) }
-    $script:proxyProc = Start-Process powershell -ArgumentList $childArgs -PassThru -WindowStyle Hidden -RedirectStandardOutput $proxyOut -RedirectStandardError $proxyErr
-    $ok = $false
-    for ($i=0; $i -lt 60; $i++) {
-        & $curl -s -X $Method -o NUL "http://127.0.0.1:$ProxyPort$reqPath" 2>$null
-        if ($LASTEXITCODE -ne 7) { $ok = $true; break }
-        Start-Sleep -Milliseconds 300
+    if ($ExternalProxyUrl) {
+        Say "  [1/4] Using EXTERNAL proxy at $ExternalProxyUrl (skipping built-in proxy startup)" 'Cyan'
+    } else {
+        Say "  [1/4] Starting raw-socket proxy on :$ProxyPort ..." 'Cyan'
+        $childArgs = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$PSCommandPath,'-AsProxy',
+                       '-ProxyPort',$ProxyPort,'-Mode',$Mode,'-DuplicateHeader',$DuplicateHeader,'-Method',$Method,'-NonInteractive')
+        if ($NoUpstream) { $childArgs += '-NoUpstream' } else { $childArgs += @('-TargetUrl',$TargetUrl) }
+        if ($Username)   { $childArgs += @('-Username',$Username,'-Password',$Password) }
+        $script:proxyProc = Start-Process powershell -ArgumentList $childArgs -PassThru -WindowStyle Hidden -RedirectStandardOutput $proxyOut -RedirectStandardError $proxyErr
+        $ok = $false
+        for ($i=0; $i -lt 60; $i++) {
+            & $curl -s -X $Method -o NUL "http://127.0.0.1:$ProxyPort$reqPath" 2>$null
+            if ($LASTEXITCODE -ne 7) { $ok = $true; break }
+            Start-Sleep -Milliseconds 300
+        }
+        if (-not $ok) {
+            Say "  [FAIL] Proxy FAILED to start on :$ProxyPort" 'Red'
+            Say '    --- proxy stderr ---' 'Red'
+            Get-Content $proxyErr -ErrorAction SilentlyContinue | ForEach-Object { Say "    $_" 'Red' }
+            throw "proxy not listening on $ProxyPort"
+        }
+        Say "  [OK]  Proxy is up on :$ProxyPort" 'Green'
     }
-    if (-not $ok) {
-        Say "  [FAIL] Proxy FAILED to start on :$ProxyPort" 'Red'
-        Say '    --- proxy stderr ---' 'Red'
-        Get-Content $proxyErr -ErrorAction SilentlyContinue | ForEach-Object { Say "    $_" 'Red' }
-        throw "proxy not listening on $ProxyPort"
-    }
-    Say "  [OK]  Proxy is up on :$ProxyPort" 'Green'
 
     # ---- 2) validate + start nginx ----
     Say ''
@@ -479,7 +494,7 @@ try {
     Say ''
 
     # --- Direct to proxy (bypassing nginx) ---
-    $directUrl  = "http://127.0.0.1:$ProxyPort$reqPath"
+    $directUrl  = if ($ExternalProxyUrl) { "$ExternalProxyUrl$reqPath" } else { "http://127.0.0.1:$ProxyPort$reqPath" }
     $directHdrs = Get-RawHeaders $directUrl $Method
     $directCount = Count-Header $directHdrs $DuplicateHeader
 
@@ -556,8 +571,9 @@ try {
     # -- Summary table --
     Say '  [C] Summary' 'Cyan'
     SayLine 'Cyan'
-    $line1 = "  Direct proxy  :$ProxyPort   '$DuplicateHeader' count = $directCount   (faulty expects 2, fixed expects 1)"
-    $line2 = "  Via NGINX     :$NginxPort   HTTP $nginxStatus            (faulty expects 502, fixed expects 200)"
+    $proxyLabel = if ($ExternalProxyUrl) { $ExternalProxyUrl -replace '^https?://','' } else { ":$ProxyPort" }
+    $line1 = "  Direct proxy  $proxyLabel   '$DuplicateHeader' count = $directCount"
+    $line2 = "  Via NGINX     :$NginxPort   HTTP $nginxStatus"
     $line3 = "  Via NGINX           '$DuplicateHeader' count = $nginxCount"
     Say $line1 'White'
     Say $line2 'White'
@@ -591,21 +607,23 @@ try {
     Say ''
 
     # -- Proxy child process log --
-    Say '  [E] Proxy log (last lines)' 'DarkCyan'
-    SayLine 'DarkCyan'
-    $proxyLines = @(Get-Content $proxyOut -ErrorAction SilentlyContinue | Select-Object -Last 8)
-    if ($proxyLines.Count -gt 0) {
-        $proxyLines | ForEach-Object { Say "      $_" 'DarkGray' }
-    } else {
-        Say '      (no proxy output captured)' 'DarkGray'
+    if (-not $ExternalProxyUrl) {
+        Say '  [E] Proxy log (last lines)' 'DarkCyan'
+        SayLine 'DarkCyan'
+        $proxyLines = @(Get-Content $proxyOut -ErrorAction SilentlyContinue | Select-Object -Last 8)
+        if ($proxyLines.Count -gt 0) {
+            $proxyLines | ForEach-Object { Say "      $_" 'DarkGray' }
+        } else {
+            Say '      (no proxy output captured)' 'DarkGray'
+        }
+        $proxyErrLines = @(Get-Content $proxyErr -ErrorAction SilentlyContinue | Select-Object -Last 5)
+        if ($proxyErrLines.Count -gt 0) {
+            Say '      --- stderr ---' 'Red'
+            $proxyErrLines | ForEach-Object { Say "      $_" 'Red' }
+        }
+        SayLine 'DarkCyan'
+        Say ''
     }
-    $proxyErrLines = @(Get-Content $proxyErr -ErrorAction SilentlyContinue | Select-Object -Last 5)
-    if ($proxyErrLines.Count -gt 0) {
-        Say '      --- stderr ---' 'Red'
-        $proxyErrLines | ForEach-Object { Say "      $_" 'Red' }
-    }
-    SayLine 'DarkCyan'
-    Say ''
 
     # -- PASS / FAIL verdict --
     $teLike = @('transfer-encoding','content-length') -contains $DuplicateHeader.ToLower()
@@ -627,7 +645,7 @@ try {
     Say ''
     Say '  Manual test commands:' 'DarkGray'
     Say "    curl -X $Method -i -N http://127.0.0.1:$NginxPort$reqPath" 'DarkGray'
-    Say "    curl -X $Method -i -N http://127.0.0.1:$ProxyPort$reqPath" 'DarkGray'
+    Say "    curl -X $Method -i -N $directUrl" 'DarkGray'
     Say ''
 
     if (-not $NonInteractive) { Read-Host '  Services are running. Press Enter to stop nginx + proxy and exit' | Out-Null }
